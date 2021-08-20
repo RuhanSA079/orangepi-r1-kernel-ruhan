@@ -1,0 +1,47 @@
+name: orangepi-r1-kernel-ruhan
+version: '0.1'
+#adopt-info: kernel
+summary: Linux kernel for OrangePi R1
+description: |
+  kernel for OrangePi-R1
+
+grade: stable
+confinement: strict
+type: kernel
+
+architectures:
+  - build-on: amd64
+    run-on: armhf
+
+parts:
+  kernel:
+    plugin: kernel
+    source: https://github.com/RuhanSA079/linux
+    source-type: git
+    source-depth: 1
+    source-tag: orange-pi-5.10
+    #Generic patches to kernel config -> Make snap confinement to full, not partial.
+    kdefconfig: [orangepi_sunxi8_defconfig, snappy/generic.config, snappy/security.config, snappy/systemd.config, snappy/snappy.config, snappy/containers.config]
+    kconfigs:
+      - CONFIG_LSM="yama,integrity,apparmor"
+      - CONFIG_SECURITY_APPARMOR=y
+      - CONFIG_AUDIT=y
+      - CONFIG_SECURITY_APPARMOR_BOOTPARAM_VALUE=1
+      - CONFIG_DEFAULT_SECURITY_APPARMOR=y
+    override-pull: |
+      snapcraftctl pull
+      echo "Applying Ubuntu Core AppArmor patches to the kernel..."
+      git apply -v ../../../patches/0000-snappy.patch
+      #git apply -v --reject --whitespace=fix ../../../patches/board-h3*
+      #git apply -v ../../../patches/0002-apparmor.patch
+      #git apply -v ../../../patches/0003-apparmor.patch
+      #Bugfix?
+      snapcraftctl set-version 0.1
+    #I am not aware of any proprietary vendor blobs to be shipped with kernel, yet, but below adds the imx-* firmware required for RS485, etc.
+    kernel-with-firmware: false
+    kernel-image-target: Image
+    build-packages:
+      - cpio
+      - libssl-dev
+      - on amd64 to armhf:
+        - gcc-arm-linux-gnueabihf:amd64
